@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +22,22 @@ import (
 )
 
 func main() {
+	sigs := make(chan os.Signal, 1)                      // Buffered channel to hold one signal
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM) // Listen for Ctrl+C (SIGINT) and graceful termination (SIGTERM)
+
+	go func() {
+		sig := <-sigs // Block until a signal is received
+		fmt.Println("Received signal:", sig)
+		// Perform cleanup or other actions here
+		fmt.Println("Performing graceful shutdown...")
+		os.Remove("public/ali/index.m3u8")
+		os.Remove("public/ali/*.ts")
+		os.Exit(0) // Exit the program after handling
+	}()
+
+	http.Handle("/", http.FileServer(http.Dir("public/ali")))
+	go http.ListenAndServe(":10500", nil)
+
 	tcpAddr, err := net.ResolveTCPAddr("tcp", ":1935")
 	if err != nil {
 		log.Panicf("Failed: %+v", err)
@@ -42,6 +62,7 @@ func main() {
 	if err := srv.Serve(listener); err != nil {
 		log.Panicf("Failed: %+v", err)
 	}
+
 }
 
 type Handler struct {
@@ -68,13 +89,15 @@ func (h *Handler) OnPublish(_ *rtmp.StreamContext, timestamp uint32, cmd *rtmpms
 
 	// Start ffmpeg process
 	ffmpegCmd := exec.Command("ffmpeg",
+		"-fflags", "nobuffer",
+		"-flags", "low_delay",
 		"-i", "pipe:0",
 		"-c:v", "copy",
 		"-c:a", "aac",
 		"-f", "hls",
 		"-hls_time", "2",
 		"-hls_list_size", "5",
-		"-hls_flags", "delete_segments",
+		"-hls_flags", "split_by_time+delete_segments+program_date_time",
 		m3u8Path,
 	)
 
@@ -177,4 +200,5 @@ func (h *Handler) OnClose() {
 	if h.ffmpegCmd != nil && h.ffmpegCmd.Process != nil {
 		_ = h.ffmpegCmd.Process.Kill()
 	}
+
 }
