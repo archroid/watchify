@@ -53,7 +53,7 @@ func main() {
 	http.HandleFunc("/whip", whipHandler)
 
 	fmt.Println("Open http://localhost:8080 to access this demo")
-	panic(http.ListenAndServe(":8080", nil)) // nolint: gosec
+	panic(http.ListenAndServe(":26005", nil)) // nolint: gosec
 }
 
 func whipHandler(res http.ResponseWriter, req *http.Request) { // nolint: cyclop
