@@ -1,110 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--
-		SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
-		SPDX-License-Identifier: MIT
-	-->
 
 <head>
-  <meta charset="UTF-8">
-  <title>archStream</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100vw;
-      height: 100vh;
-      box-sizing: border-box;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f0f0f0;
-      /* optional for visibility */
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archify Streaming</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f6f8fa;
+            color: #24292e;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-    .videoPlayer {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      /* For non-image/video: add width: 100%; height: 100% if desired */
-    }
-  </style>
+        .top-bar {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e1e4e8;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .top-bar h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .top-bar .user-info {
+            font-size: 14px;
+            color: #586069;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 24px;
+            gap: 24px;
+        }
+
+        .video-player {
+            flex: 3;
+            background-color: #ffffff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+        }
+
+        .connected-users {
+            flex: 1;
+            background-color: #ffffff;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .connected-users h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            color: #24292e;
+        }
+
+        .connected-users ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .connected-users li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e1e4e8;
+            font-size: 14px;
+            color: #24292e;
+        }
+
+        .connected-users li:last-child {
+            border-bottom: none;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-content h2 {
+            font-size: 18px;
+            margin: 0 0 16px 0;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-content button {
+            background-color: #0366d6;
+            color: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-content button:hover {
+            background-color: #005cc5;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .video-player {
+                order: -1;
+            }
+        }
+    </style>
 </head>
 
 <body>
+    <div class="top-bar">
+        <h1>Archify Streaming</h1>
+        <div class="user-info">Welcome, <span id="username">Guest</span></div>
+    </div>
 
-  <video id="videoPlayer" autoplay muted controls style="max-width: 100%;max-height: 100%;"> </video>
+    <div class="main-content">
+        <div class="video-player">
+            <video id="videoPlayer" autoplay muted controls> </video>
+        </div>
 
-</body>
+        <div class="connected-users">
+            <h2>Connected Users</h2>
+            <ul id="user-list">
+                <!-- Dynamically add users here via JS if needed -->
+                <li>User1</li>
+                <li>User2</li>
+                <li>User3</li>
+            </ul>
+        </div>
+    </div>
 
-<script>
-  let peerConnection = new RTCPeerConnection()
+    <div class="modal" id="name-modal">
+        <div class="modal-content">
+            <h2>Enter Your Name</h2>
+            <input type="text" id="name-input" placeholder="Your name">
+            <button onclick="saveName()">Submit</button>
+        </div>
+    </div>
 
-  peerConnection.oniceconnectionstatechange = () => {
-    let el = document.createElement('p')
-    el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
-
-    document.getElementById('iceConnectionStates').appendChild(el);
-  }
-
-  window.doWHEP = () => {
-    peerConnection.addTransceiver('video', { direction: 'recvonly' })
-    peerConnection.addTransceiver('audio', { direction: 'recvonly' })
-
-    peerConnection.ontrack = function (event) {
-      document.getElementById('videoPlayer').srcObject = event.streams[0]
-    }
-
-    peerConnection.createOffer().then(offer => {
-      peerConnection.setLocalDescription(offer)
-
-      fetch(`/whep`, {
-        method: 'POST',
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer none`,
-          'Content-Type': 'application/sdp'
+    <script>
+        function getName() {
+            return localStorage.getItem('username');
         }
-      }).then(r => r.text())
-        .then(answer => {
-          peerConnection.setRemoteDescription({
-            sdp: answer,
-            type: 'answer'
-          })
-        })
-    })
-  }
-  document.addEventListener('DOMContentLoaded', function () {
-    window.onload = window.doWHEP
-  });
 
-  // window.doWHIP = () => {
-  //   navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-  //     .then(stream => {
-  //       document.getElementById('videoPlayer').srcObject = stream
-  //       stream.getTracks().forEach(track => peerConnection.addTrack(track, stream))
+        function setName(name) {
+            localStorage.setItem('username', name);
+            document.getElementById('username').textContent = name;
+            // Optionally, add to user list
+            const userList = document.getElementById('user-list');
+            const li = document.createElement('li');
+            li.textContent = name;
+            userList.appendChild(li);
+        }
 
-  //       peerConnection.createOffer().then(offer => {
-  //         peerConnection.setLocalDescription(offer)
+        function saveName() {
+            const name = document.getElementById('name-input').value.trim();
+            if (name) {
+                setName(name);
+                document.getElementById('name-modal').style.display = 'none';
+            }
+        }
 
-  //         fetch(`/whip`, {
-  //           method: 'POST',
-  //           body: offer.sdp,
-  //           headers: {
-  //             Authorization: `Bearer none`,
-  //             'Content-Type': 'application/sdp'
-  //           }
-  //         }).then(r => r.text())
-  //           .then(answer => {
-  //             peerConnection.setRemoteDescription({
-  //               sdp: answer,
-  //               type: 'answer'
-  //             })
-  //           })
-  //       })
-  //   })
-  // }
-</script>
+        window.onload = function () {
+            const storedName = getName();
+            if (storedName) {
+                document.getElementById('username').textContent = storedName;
+            } else {
+                document.getElementById('name-modal').style.display = 'flex';
+            }
+        };
+    </script>
+
+    <script>
+        let peerConnection = new RTCPeerConnection()
+
+        peerConnection.oniceconnectionstatechange = () => {
+            let el = document.createElement('p')
+            el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
+
+            document.getElementById('iceConnectionStates').appendChild(el);
+        }
+
+        window.doWHEP = () => {
+            peerConnection.addTransceiver('video', { direction: 'recvonly' })
+            peerConnection.addTransceiver('audio', { direction: 'recvonly' })
+
+            peerConnection.ontrack = function (event) {
+                document.getElementById('videoPlayer').srcObject = event.streams[0]
+            }
+
+            peerConnection.createOffer().then(offer => {
+                peerConnection.setLocalDescription(offer)
+
+                fetch(`/whep`, {
+                    method: 'POST',
+                    body: offer.sdp,
+                    headers: {
+                        Authorization: `Bearer none`,
+                        'Content-Type': 'application/sdp'
+                    }
+                }).then(r => r.text())
+                    .then(answer => {
+                        peerConnection.setRemoteDescription({
+                            sdp: answer,
+                            type: 'answer'
+                        })
+                    })
+            })
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            window.onload = window.doWHEP
+        });
+
+        // window.doWHIP = () => {
+        //   navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        //     .then(stream => {
+        //       document.getElementById('videoPlayer').srcObject = stream
+        //       stream.getTracks().forEach(track => peerConnection.addTrack(track, stream))
+
+        //       peerConnection.createOffer().then(offer => {
+        //         peerConnection.setLocalDescription(offer)
+
+        //         fetch(`/whip`, {
+        //           method: 'POST',
+        //           body: offer.sdp,
+        //           headers: {
+        //             Authorization: `Bearer none`,
+        //             'Content-Type': 'application/sdp'
+        //           }
+        //         }).then(r => r.text())
+        //           .then(answer => {
+        //             peerConnection.setRemoteDescription({
+        //               sdp: answer,
+        //               type: 'answer'
+        //             })
+        //           })
+        //       })
+        //   })
+        // }
+    </script>
+</body>
 
 </html>
