@@ -56,8 +56,8 @@ func main() {
 	}
 
 	port := os.Getenv("PORT")
-	udpPortMinint64, _ := strconv.ParseInt(os.Getenv("UDP_PORT_MIN"), 16, 16)
-	udpPortMaxint64, _ := strconv.ParseInt(os.Getenv("UDP_PORT_MAX"), 16, 16)
+	udpPortMinint64, _ := strconv.ParseInt(os.Getenv("UDP_PORT_MIN"), 10, 64)
+	udpPortMaxint64, _ := strconv.ParseInt(os.Getenv("UDP_PORT_MAX"), 10, 64)
 
 	udpPortMin = uint16(udpPortMinint64)
 	udpPortMax = uint16(udpPortMaxint64)
