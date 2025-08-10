@@ -23,18 +23,30 @@ import (
 var (
 	videoTrack *webrtc.TrackLocalStaticRTP
 	audioTrack *webrtc.TrackLocalStaticRTP
+	
 
 	peerConnectionConfiguration = webrtc.Configuration{
+		ICETransportPolicy: webrtc.ICETransportPolicyAll,
 		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
-			},
+			    // 			{
+    			// 	URLs:       []string{"turn:numb.viagenie.ca"}, // Replace with your TURN server address and port
+    			// 	Username:   "muazkh",                           // Replace with your TURN server username
+    			// 	Credential: "webrtc@live.com",                           // Replace with your TURN server password
+    			// },
+			 {
+			 	URLs: []string{"stun:stun.l.google.com:19302"},
+				
+			 },
 		},
 	}
+
 )
 
 // nolint:gocognit
 func main() {
+
+
+
 	// Everything below is the Pion WebRTC API! Thanks for using it ❤️.
 	var err error
 	if videoTrack, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
@@ -53,11 +65,12 @@ func main() {
 	http.HandleFunc("/whip", whipHandler)
 
 	fmt.Println("Open http://localhost:8080 to access this demo")
-	panic(http.ListenAndServe(":26005", nil)) // nolint: gosec
+	panic(http.ListenAndServe(":26015", nil)) // nolint: gosec
 }
 
 func whipHandler(res http.ResponseWriter, req *http.Request) { // nolint: cyclop
 	fmt.Printf("Request to %s, method = %s\n", req.URL, req.Method)
+
 
 	res.Header().Add("Access-Control-Allow-Origin", "*")
 	res.Header().Add("Access-Control-Allow-Methods", "POST")
@@ -76,6 +89,8 @@ func whipHandler(res http.ResponseWriter, req *http.Request) { // nolint: cyclop
 
 	// Create a MediaEngine object to configure the supported codec
 	mediaEngine := &webrtc.MediaEngine{}
+
+
 
 	// Set up the codecs you want to use.
 	// We'll only use H264 and Opus but you can also define your own
@@ -116,9 +131,10 @@ func whipHandler(res http.ResponseWriter, req *http.Request) { // nolint: cyclop
 	if err = webrtc.RegisterDefaultInterceptors(mediaEngine, interceptorRegistry); err != nil {
 		panic(err)
 	}
-
+    settingEngine := webrtc.SettingEngine{}
+    settingEngine.SetEphemeralUDPPortRange(26020, 26100)
 	// Create the API object with the MediaEngine
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithInterceptorRegistry(interceptorRegistry))
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithInterceptorRegistry(interceptorRegistry) , webrtc.WithSettingEngine(settingEngine),)
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := api.NewPeerConnection(peerConnectionConfiguration)
@@ -246,7 +262,10 @@ func whepHandler(res http.ResponseWriter, req *http.Request) { //nolint:cyclop
 	}
 
 	// Create the API object with the MediaEngine
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(media), webrtc.WithInterceptorRegistry(ir))
+	settingEngine := webrtc.SettingEngine{}
+    settingEngine.SetEphemeralUDPPortRange(26020, 26100)
+	
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(media), webrtc.WithInterceptorRegistry(ir),webrtc.WithSettingEngine(settingEngine),)
 
 	// Create a new RTCPeerConnection
 	peerConnection, err := api.NewPeerConnection(peerConnectionConfiguration)
@@ -293,6 +312,11 @@ func whepHandler(res http.ResponseWriter, req *http.Request) { //nolint:cyclop
 
 func writeAnswer(res http.ResponseWriter, peerConnection *webrtc.PeerConnection, offer []byte, path string) {
 	// Set the handler for ICE connection state
+		peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate != nil {
+			fmt.Printf("New ICE candidate: %s\n", candidate.String())
+		}
+	})
 	// This will notify you when the peer has connected/disconnected
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("ICE Connection State has changed: %s\n", connectionState.String())
