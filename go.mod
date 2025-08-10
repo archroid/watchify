@@ -1,4 +1,4 @@
-module a/a
+module archroid/watchify
 
 go 1.24.5
 
